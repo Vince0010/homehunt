@@ -36,7 +36,7 @@ class _AdminBookingStatusState extends State<AdminBookingStatus> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("Booking has been rejected and removed.")));
       } else {
-        // Update status for other cases
+        // Update status for other cases (Pending, Confirmed, Completed)
         await FirebaseFirestore.instance
             .collection('Bookings')
             .doc(bookingId)
@@ -50,132 +50,324 @@ class _AdminBookingStatusState extends State<AdminBookingStatus> {
     }
   }
 
+  // Normalize status values to match dropdown items
+  String _normalizeStatus(dynamic status) {
+    if (status == null) return 'Pending';
+    
+    String statusStr = status.toString().trim();
+    
+    // Map common status variations to standard values
+    switch (statusStr.toLowerCase()) {
+      case 'confirm':
+        return 'Confirmed';
+      case 'done':
+      case 'complete':
+        return 'Completed';
+      case 'reject':
+        return 'Rejected';
+      case 'pending':
+      case 'pending approval':
+        return 'Pending';
+      case 'approved':
+        return 'Approved';
+      default:
+        // If it's already a valid value, return it as-is (with proper casing)
+        if (['Pending', 'Confirmed', 'Completed', 'Rejected', 'Approved'].contains(statusStr)) {
+          return statusStr;
+        }
+        // Default to Pending if unrecognized
+        return 'Pending';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Center(
-            child: Text('Admin Booking Status',
-                style: TextStyle(
-                    fontSize: 20, fontFamily: 'Bangers', color: Colors.white))),
-        backgroundColor: Colors.black,
-      ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: bookingStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Text(
-                  "No bookings found.",
-                  style: TextStyle(fontSize: 18, fontFamily: 'ProtestStrike'),
+      backgroundColor: const Color(0xFFF5F6FA),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Header with gradient
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF5E60F8),
+                    Color(0xFF6D70FA),
+                    Color(0xFFE9EBFF),
+                  ],
                 ),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              DocumentSnapshot<Map<String, dynamic>> booking =
-                  snapshot.data!.docs[index];
-
-              // Convert Firestore Timestamp to DateTime
-              DateTime checkInDate =
-                  (booking['CheckInDate'] as Timestamp).toDate();
-              DateTime checkOutDate =
-                  (booking['CheckOutDate'] as Timestamp).toDate();
-
-              return Card(
-                margin: const EdgeInsets.all(10),
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text("Booking ID: ${booking['BookingID']}",
-                          style: const TextStyle(
-                              fontSize: 16, fontFamily: 'ProtestStrike')),
-                      const SizedBox(height: 8),
-                      Text(
-                          "Check-in: ${DateFormat('yyyy-MM-dd').format(checkInDate)}",
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontFamily: 'ProtestStrike')),
-                      Text(
-                          "Check-out: ${DateFormat('yyyy-MM-dd').format(checkOutDate)}",
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontFamily: 'ProtestStrike')),
-                      Text("Total Price: ₱${booking['TotalPrice']}",
-                          style: const TextStyle(
-                              fontSize: 16, fontFamily: 'ProtestStrike')),
-                      Text("Current Status: ${booking['Status']}",
-                          style: const TextStyle(
-                              fontSize: 16, fontFamily: 'ProtestStrike')),
-                      const SizedBox(height: 10),
-
-                      // Displaying the uploaded image
-                      // Displaying the uploaded image
-  booking['ImagePath'] != null
-      ? Container(
-          width: 400, // Specify the width of the container
-          height: 300, // Specify the height of the container
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey, width: 1), // Optional border
-            borderRadius: BorderRadius.circular(8), // Optional border radius
-            image: DecorationImage(
-              image: NetworkImage(booking['ImagePath']),
-              fit: BoxFit.scaleDown, // Use scaleDown to fit the image
-            ),
-          ),
-        )
-      : const Text("No image uploaded",
-          style: TextStyle(fontSize: 16, fontFamily: 'ProtestStrike')),
-  const SizedBox(height: 10),
-
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Dropdown to change status
-                          DropdownButton<String>(
-                            value: booking['Status'],
-                            items: <String>['Pending', 'Approved', 'Rejected']
-                                .map((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              if (newValue != null &&
-                                  newValue != booking['Status']) {
-                                // Call update function when status is changed
-                                updateBookingStatus(booking.id, newValue);
-                              }
-                            },
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Booking Management',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Manage Bookings',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+          ),
+
+          // Title section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text(
+                'Booking Requests',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+
+          // Bookings list
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: bookingStream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text("Error: ${snapshot.error}"),
+                    ),
+                  ),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: Text(
+                        "No booking requests found.",
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    DocumentSnapshot<Map<String, dynamic>> booking =
+                        snapshot.data!.docs[index];
+
+                    // Convert Firestore Timestamp to DateTime
+                    DateTime checkInDate =
+                        (booking['CheckInDate'] as Timestamp).toDate();
+                    DateTime checkOutDate =
+                        (booking['CheckOutDate'] as Timestamp).toDate();
+
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFE2E5EE), width: 1),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(.06),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Image
+                              booking['ImagePath'] != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: AspectRatio(
+                                        aspectRatio: 16 / 9,
+                                        child: Image.network(
+                                          booking['ImagePath'],
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            color: const Color(0xFFE5E7EB),
+                                            child: const Icon(Icons.image, size: 50, color: Colors.grey),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : const Text("No image uploaded",
+                                      style: TextStyle(fontSize: 16, color: Colors.black54)),
+                              const SizedBox(height: 12),
+                              
+                              // Booking ID
+                              Text(
+                                "Booking ID: ${booking['BookingID']}",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Date info
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 14, color: Colors.black45),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      "Check-in: ${DateFormat('yyyy-MM-dd').format(checkInDate)}",
+                                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 14, color: Colors.black45),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      "Check-out: ${DateFormat('yyyy-MM-dd').format(checkOutDate)}",
+                                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Price and Status row
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Total Price',
+                                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "₱${booking['TotalPrice']}",
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: booking['Status'].toString().toLowerCase() == 'confirmed'
+                                          ? Colors.green.shade50
+                                          : booking['Status'].toString().toLowerCase() == 'completed'
+                                              ? Colors.blue.shade50
+                                              : booking['Status'].toString().toLowerCase() == 'pending'
+                                                  ? Colors.orange.shade50
+                                                  : Colors.red.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      booking['Status'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: booking['Status'].toString().toLowerCase() == 'confirmed'
+                                            ? Colors.green.shade700
+                                            : booking['Status'].toString().toLowerCase() == 'completed'
+                                                ? Colors.blue.shade700
+                                                : booking['Status'].toString().toLowerCase() == 'pending'
+                                                    ? Colors.orange.shade700
+                                                    : Colors.red.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Status dropdown
+                              DropdownButton<String>(
+                                value: _normalizeStatus(booking['Status']),
+                                items: <String>['Pending', 'Confirmed', 'Completed', 'Rejected', 'Approved']
+                                    .map((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(value),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  if (newValue != null &&
+                                      newValue != booking['Status']) {
+                                    updateBookingStatus(booking.id, newValue);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: snapshot.data!.docs.length,
                 ),
               );
             },
-          );
-        },
+          ),
+
+          // Bottom spacing
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
       ),
     );
   }

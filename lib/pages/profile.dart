@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'edit_profile.dart';
+import 'terms_and_conditions.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -89,7 +90,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     _tile(
                       icon: Icons.description,
                       text: 'Terms & Conditions',
-                      onTap: () => _showTextDialog(context, 'Terms & Conditions', 'Your terms text.'),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TermsAndConditionsPage()),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Padding(

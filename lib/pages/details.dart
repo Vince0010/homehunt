@@ -3,7 +3,10 @@ import 'package:homehunt/pages/booking.dart';
 import 'package:homehunt/widget/support_widget.dart';
 
 class Details extends StatefulWidget {
-  final String title, description, address, price, maxguests, images, status;
+  final String title, description, address, maxguests, images, status;
+  final dynamic price;
+  final String? roomId;
+  final String? roomCategory;
 
   const Details({
     super.key,
@@ -14,6 +17,8 @@ class Details extends StatefulWidget {
     required this.maxguests,
     required this.images,
     required this.status,
+    this.roomId,
+    this.roomCategory,
   });
 
   @override
@@ -110,18 +115,23 @@ class _DetailsState extends State<Details> {
                               // Log the price for debugging
                               print("Price before parsing: ${widget.price}");
 
-                              // Remove commas and ensure the price is a valid number string
-                              final priceString =
-                                  widget.price.replaceAll(',', '').trim();
+                              // Convert price to string if it's not already
+                              final priceString = widget.price is String 
+                                  ? widget.price.toString().replaceAll(',', '').trim()
+                                  : widget.price.toString();
                               final price = double.tryParse(priceString);
 
                               if (price != null) {
-                                // Pass price as String
+                                // Pass price and room info to BookingPage
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => BookingPage(
-                                        price: priceString), // Pass as string
+                                      price: priceString,
+                                      roomId: widget.roomId,
+                                      roomTitle: widget.title,
+                                      roomCategory: widget.roomCategory ?? "Unknown",
+                                    ),
                                   ),
                                 );
                               } else {

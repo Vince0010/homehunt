@@ -163,6 +163,8 @@ class _HomePageState extends State<HomePage> {
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: _RoomCard(
+                  roomId: ds.id,
+                  roomCategory: selectedCategory,
                   title: ds["Title"],
                   description: ds["Description"],
                   address: ds["Address"],
@@ -439,6 +441,8 @@ class _RoomCard extends StatelessWidget {
   final dynamic maxGuests;
   final String image;
   final String status;
+  final String? roomId;
+  final String? roomCategory;
 
   const _RoomCard({
     required this.title,
@@ -448,6 +452,8 @@ class _RoomCard extends StatelessWidget {
     required this.maxGuests,
     required this.image,
     required this.status,
+    this.roomId,
+    this.roomCategory,
   });
 
   @override
@@ -458,6 +464,8 @@ class _RoomCard extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) => Details(
+              roomId: roomId,
+              roomCategory: roomCategory,
               title: title,
               description: description,
               address: address,

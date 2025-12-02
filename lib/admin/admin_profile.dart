@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:homehunt/auth/admin_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:homehunt/pages/terms_and_conditions.dart';
+import 'package:homehunt/components/bottompagenav.dart';
 
 class AdminProfile extends StatefulWidget {
   const AdminProfile({super.key});
@@ -38,112 +40,347 @@ class _AdminProfileState extends State<AdminProfile> {
     }
   }
 
+  // Run price migration
+  // 
+  // Future<void> _runMigration() async {
+  //   setState(() {
+  //     isMigrating = true;
+  //   });
+  //
+  //   try {
+  //     await MigrationService.migrateRoomPrices();
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text("✅ Migration complete! Room prices updated."),
+  //         backgroundColor: Colors.green,
+  //         duration: Duration(seconds: 3),
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text("❌ Migration error: $e"),
+  //         backgroundColor: Colors.red,
+  //         duration: const Duration(seconds: 3),
+  //       ),
+  //     );
+  //   } finally {
+  //     setState(() {
+  //       isMigrating = false;
+  //     });
+  //   }
+  // }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Center(
-          child: Text(
-            "Admin Profile",
-            style: TextStyle(
-                fontSize: 20, fontFamily: 'Bangers', color: Colors.white),
-          ),
-        ),
-        backgroundColor: Colors.black,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Display Email
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 10.0),
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    blurRadius: 5,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+      backgroundColor: const Color(0xFFF5F6FA),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Header with gradient
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF5E60F8),
+                    Color(0xFF6D70FA),
+                    Color(0xFFE9EBFF),
+                  ],
+                ),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.email, color: Colors.black),
-                  const SizedBox(width: 10.0),
-                  Text(
-                    "Email: $email",
-                    style: const TextStyle(
-                        fontSize: 20,
-                        fontFamily: 'ProtestStrike',
-                        color: Colors.black),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Welcome back,',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Admin Profile',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ClipOval(
+                        child: Container(
+                          color: Colors.white,
+                          width: 45,
+                          height: 45,
+                          child: Image.asset(
+                            "images/12.jpg",
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.person,
+                              color: Colors.grey,
+                              size: 30,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+          ),
 
-            // Terms and Conditions
-            GestureDetector(
-              onTap: () {
-                // Navigate to terms and conditions page
-              },
+          // Title section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text(
+                'Account Settings',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+
+          // Email display
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 10.0),
-                padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE2E5EE), width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      blurRadius: 5,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 3),
-                    ),
+                      color: Colors.black.withOpacity(.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
                   ],
                 ),
-                child: const Row(
+                padding: const EdgeInsets.all(12),
+                child: Row(
                   children: [
-                    Icon(Icons.description, color: Colors.black),
-                    SizedBox(width: 10.0),
-                    Text(
-                      "Terms and Conditions",
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontFamily: 'ProtestStrike',
-                          color: Colors.black),
+                    const Icon(Icons.email, color: Color(0xFF5E60F8), size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Email Address',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
+          ),
 
-            // Logout
-            Padding(
-              padding: const EdgeInsets.only(left: 25.0),
-              child: ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text("L O G O U T",
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontFamily: 'Bangers',
-                        color: Colors.red)),
-                onTap: () async {
-                  // Since you're not using Firebase Auth for admin, adjust this if necessary
-                  Navigator.pushReplacement(
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+          // Terms and Conditions
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AdminAuth()),
+                    MaterialPageRoute(builder: (context) => const TermsAndConditionsPage()),
                   );
                 },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFE2E5EE), width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.description, color: Color(0xFF5E60F8), size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Terms and Conditions',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Review our policies',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward, color: Colors.black45, size: 20),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+
+          // Data Migration button - COMMENTED OUT (Migration already completed)
+          // SliverToBoxAdapter(
+          //   child: Padding(
+          //     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          //     child: GestureDetector(
+          //       onTap: isMigrating ? null : _runMigration,
+          //       child: Container(
+          //         decoration: BoxDecoration(
+          //           color: Colors.blue.shade50,
+          //           borderRadius: BorderRadius.circular(18),
+          //           border: Border.all(color: Colors.blue.shade200, width: 1),
+          //         ),
+          //         padding: const EdgeInsets.all(12),
+          //         child: Row(
+          //           children: [
+          //             if (isMigrating)
+          //               SizedBox(
+          //                 width: 24,
+          //                 height: 24,
+          //                 child: CircularProgressIndicator(
+          //                   strokeWidth: 2.5,
+          //                   valueColor: AlwaysStoppedAnimation<Color>(
+          //                     Colors.blue.shade700,
+          //                   ),
+          //                 ),
+          //               )
+          //             else
+          //               Icon(Icons.sync, color: Colors.blue.shade700, size: 24),
+          //             const SizedBox(width: 12),
+          //             Expanded(
+          //               child: Column(
+          //                 crossAxisAlignment: CrossAxisAlignment.start,
+          //                 children: [
+          //                   Text(
+          //                     'Data Migration',
+          //                     style: TextStyle(
+          //                       fontSize: 16,
+          //                       fontWeight: FontWeight.w600,
+          //                       color: Colors.blue.shade700,
+          //                     ),
+          //                   ),
+          //                   const SizedBox(height: 2),
+          //                   Text(
+          //                     isMigrating 
+          //                       ? 'Updating room prices...' 
+          //                       : 'Update room prices to new format',
+          //                     style: TextStyle(
+          //                       fontSize: 12,
+          //                       color: Colors.blue.shade600,
+          //                     ),
+          //                   ),
+          //                 ],
+          //               ),
+          //             ),
+          //             if (!isMigrating)
+          //               Icon(Icons.arrow_forward, color: Colors.blue.shade400, size: 20),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+          // Logout button
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GestureDetector(
+                onTap: () async {
+                  // Sign out from Firebase
+                  await FirebaseAuth.instance.signOut();
+                  // Navigate to Bottompagenav (main home with navbar)
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Bottompagenav()),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.red.shade200, width: 1),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, color: Colors.red.shade700, size: 24),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom spacing
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
       ),
     );
   }

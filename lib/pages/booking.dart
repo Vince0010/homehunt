@@ -9,9 +9,18 @@ import 'package:firebase_storage/firebase_storage.dart'; // Import Firebase Stor
 import 'package:flutter/foundation.dart'; // For kIsWeb
 
 class BookingPage extends StatefulWidget {
-  final String price; // Kept as String to accept user input
+  final dynamic price; // Changed to dynamic to accept int or String
+  final String? roomId;
+  final String? roomTitle;
+  final String? roomCategory;
 
-  const BookingPage({super.key, required this.price});
+  const BookingPage({
+    super.key,
+    required this.price,
+    this.roomId,
+    this.roomTitle,
+    this.roomCategory,
+  });
 
   @override
   _BookingPageState createState() => _BookingPageState();
@@ -65,8 +74,13 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   double _calculateTotalPrice() {
-    // Convert price from string to double
-    double pricePerNight = double.tryParse(widget.price) ?? 0.0;
+    // Convert price from string or int to double
+    double pricePerNight;
+    if (widget.price is String) {
+      pricePerNight = double.tryParse(widget.price) ?? 0.0;
+    } else {
+      pricePerNight = (widget.price as num).toDouble();
+    }
 
     if (checkInDate != null && checkOutDate != null) {
       int totalDays = checkOutDate!.difference(checkInDate!).inDays;
@@ -123,7 +137,13 @@ class _BookingPageState extends State<BookingPage> {
       // Upload image and get its download URL
       String? imagePath = await _uploadImageToFirebase();
 
-      // Prepare booking data
+      // Calculate length of stay
+      int lengthOfStay = checkOutDate!.difference(checkInDate!).inDays;
+      
+      // Calculate month booked (YYYY-MM format)
+      String monthBooked = '${checkInDate!.year}-${checkInDate!.month.toString().padLeft(2, '0')}';
+
+      // Prepare booking data with analytics fields
       Map<String, dynamic> bookingData = {
         'BookingID': bookingId,
         'UserID': uid,
@@ -131,7 +151,17 @@ class _BookingPageState extends State<BookingPage> {
         'CheckOutDate': checkOutDate,
         'TotalPrice': totalPrice,
         'Status': 'Pending',
-        'ImagePath': imagePath, // Use the uploaded image URL
+        'ImagePath': imagePath,
+        // Analytics fields
+        'RoomID': widget.roomId ?? 'unknown',
+        'RoomTitle': widget.roomTitle ?? 'Unknown Room',
+        'RoomCategory': widget.roomCategory ?? 'Unknown',
+        'RoomPrice': widget.price is String 
+            ? (double.tryParse(widget.price) ?? 0.0) 
+            : ((widget.price as num).toDouble()),
+        'LengthOfStay': lengthOfStay,
+        'MonthBooked': monthBooked,
+        'BookingDate': DateTime.now(),
       };
 
       try {

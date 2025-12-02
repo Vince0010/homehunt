@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:homehunt/services/database.dart';
-import 'package:homehunt/widget/support_widget.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
@@ -89,7 +88,7 @@ class _AddRoomState extends State<AddRoom> {
           "Title": titleController.text,
           "Description": descController.text,
           "Address": addressController.text,
-          "Price": priceController.text,
+          "Price": double.parse(priceController.text), // Store as number for analytics
           "MaxGuests": maxGuestsController.text,
           "Status": status,
         };
@@ -128,25 +127,52 @@ class _AddRoomState extends State<AddRoom> {
   }
 
   Widget buildTextField(String label, TextEditingController controller,
-      {int maxLines = 1}) {
+      {int maxLines = 1, bool numbersOnly = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Appwidget.proteststrike()),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
         const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFFececf8),
-            borderRadius: BorderRadius.circular(10),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFE2E5EE),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.06),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
           child: TextField(
             controller: controller,
             maxLines: maxLines,
+            keyboardType: numbersOnly ? TextInputType.number : TextInputType.text,
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: "Enter $label",
-              hintStyle: Appwidget.proteststrike(),
+              hintStyle: const TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
             ),
           ),
         ),
@@ -159,32 +185,62 @@ class _AddRoomState extends State<AddRoom> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Appwidget.proteststrike()),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
         const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFFececf8),
-            borderRadius: BorderRadius.circular(10),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFE2E5EE),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.06),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               items: items
                   .map((item) => DropdownMenuItem(
                         value: item,
-                        child: Text(item,
-                            style: const TextStyle(
-                                fontSize: 18,
-                                fontFamily: 'ProtestStrike',
-                                color: Colors.black)),
+                        child: Text(
+                          item,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
                       ))
                   .toList(),
               onChanged: onChanged,
               dropdownColor: Colors.white,
-              hint: Text("Select $label"),
-              iconSize: 36,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
+              hint: const Text(
+                "Select option",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                ),
+              ),
+              iconSize: 28,
+              icon: const Icon(
+                Icons.arrow_drop_down,
+                color: Color(0xFF5E60F8),
+              ),
               value: selectedValue,
+              isExpanded: true,
             ),
           ),
         ),
@@ -195,36 +251,68 @@ class _AddRoomState extends State<AddRoom> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: const Icon(Icons.arrow_back_ios_new_outlined,
-              color: Colors.white),
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF5E60F8),
+                Color(0xFF6D70FA),
+                Color(0xFFE9EBFF),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Text(
+                      'Add Room',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        centerTitle: true,
-        title: const Text("Add Item",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18.0,
-              fontFamily: 'Bangers',
-            )),
-        backgroundColor: Colors.black,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Container(
-                margin: const EdgeInsets.all(20),
+                margin: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Upload the Item Picture",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.0,
-                          fontFamily: 'Oswald',
-                        )),
-                    const SizedBox(height: 20),
+                    const Text(
+                      'Upload Room Image',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     GestureDetector(
                       onTap: getImage,
                       child: Center(
@@ -257,46 +345,42 @@ class _AddRoomState extends State<AddRoom> {
                     ),
                     const SizedBox(height: 30),
                     buildTextField("Title", titleController),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 16),
                     buildTextField("Description", descController, maxLines: 6),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 16),
                     buildTextField("Address", addressController),
-                    const SizedBox(height: 30),
-                    buildTextField("Price", priceController),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 16),
+                    buildTextField("Price", priceController, numbersOnly: true),
+                    const SizedBox(height: 16),
                     buildTextField("Maximum Guests", maxGuestsController),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     buildDropdown("Select Category", roomItems, category,
                         (value) => setState(() => category = value)),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 16),
                     buildDropdown(
                         "Select Status",
                         ["Available", "Not Available"],
                         status,
                         (value) => setState(() => status = value)),
-                    const SizedBox(height: 30),
-                    GestureDetector(
-                      onTap: uploadItem,
-                      child: Center(
-                        child: Material(
-                          elevation: 5,
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 5),
-                            width: 150,
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                "Add",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontFamily: 'Bangers'),
-                              ),
-                            ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF5E60F8),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                        ),
+                        onPressed: uploadItem,
+                        child: const Text(
+                          'Add Room',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
