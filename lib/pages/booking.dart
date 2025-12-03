@@ -5,8 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // Import Firebase Storage
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'booking_confirmation_dialog.dart';
 
 class BookingPage extends StatefulWidget {
   final dynamic price; // Changed to dynamic to accept int or String
@@ -170,9 +171,22 @@ class _BookingPageState extends State<BookingPage> {
             .collection('Bookings')
             .doc(bookingId)
             .set(bookingData);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-                "Booking Confirmed! Total Price: ₱${totalPrice.toStringAsFixed(2)}")));
+        
+        // Show confirmation dialog with QR code
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => BookingConfirmationDialog(
+            bookingId: bookingId,
+            checkInDate: checkInDate!,
+            checkOutDate: checkOutDate!,
+            totalPrice: totalPrice,
+            roomTitle: widget.roomTitle ?? 'Unknown Room',
+            roomCategory: widget.roomCategory ?? 'Unknown',
+            lengthOfStay: lengthOfStay,
+          ),
+        );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Failed to confirm booking: $e")));
@@ -186,115 +200,241 @@ class _BookingPageState extends State<BookingPage> {
   @override
   Widget build(BuildContext context) {
     double totalPrice = _calculateTotalPrice();
+    const Color _primary = Color(0xFF5E60F8);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Icon(Icons.arrow_back_ios_new_outlined,
-              color: Colors.white),
+          child: const Icon(Icons.arrow_back_ios_new_outlined, color: Colors.white),
         ),
-        title: const Center(
-          child: Text(
-            "Book a Room",
-            style: TextStyle(
-                fontSize: 18, fontFamily: 'Bangers', color: Colors.white),
+        title: const Text(
+          "Book a Room",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF5E60F8),
+                Color(0xFF6D70FA),
+                Color(0xFFE9EBFF),
+              ],
+            ),
           ),
         ),
-        backgroundColor: Colors.black,
       ),
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Check-in Date",
-                style: TextStyle(fontSize: 18, fontFamily: 'ProtestStrike')),
-            GestureDetector(
-              onTap: () => _selectDate(context, true),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  checkInDate == null
-                      ? 'Select date'
-                      : DateFormat('yyyy-MM-dd').format(checkInDate!),
-                  style: const TextStyle(
-                      fontSize: 16, fontFamily: 'ProtestStrike'),
-                ),
+            const SizedBox(height: 8),
+            Text(
+              'Booking Details',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: _primary,
               ),
             ),
             const SizedBox(height: 20),
-            const Text("Check-out Date",
-                style: TextStyle(fontSize: 18, fontFamily: 'ProtestStrike')),
-            GestureDetector(
-              onTap: () => _selectDate(context, false),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  checkOutDate == null
-                      ? 'Select date'
-                      : DateFormat('yyyy-MM-dd').format(checkOutDate!),
-                  style: const TextStyle(
-                      fontSize: 18, fontFamily: 'ProtestStrike'),
-                ),
-              ),
-            ),
+            _buildDateField('Check-in Date', checkInDate, () => _selectDate(context, true)),
+            const SizedBox(height: 16),
+            _buildDateField('Check-out Date', checkOutDate, () => _selectDate(context, false)),
+            const SizedBox(height: 16),
+            _buildImageUploadField(),
             const SizedBox(height: 20),
-            const Text("Upload Image (VALID ID)",
-                style: TextStyle(fontSize: 18, fontFamily: 'ProtestStrike')),
-            GestureDetector(
-              onTap: _uploadImage,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: imageFile == null && imageBytes == null
-                    ? const Text('Tap to upload an image',
-                        style: TextStyle(
-                            fontSize: 16, fontFamily: 'ProtestStrike'))
-                    : kIsWeb
-                        ? Image.memory(imageBytes!,
-                            width: 100, height: 100) // For web
-                        : Image.file(File(imageFile!.path),
-                            width: 100, height: 100), // For mobile
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text("Total Price: ₱${totalPrice.toStringAsFixed(2)}",
-                style: const TextStyle(fontSize: 18, fontFamily: 'Oswald')),
-            const SizedBox(height: 30),
-            Center(
+            _buildPriceCard(totalPrice),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
                 onPressed: _confirmBooking,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 8, 8, 8),
-                  elevation: 7,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 45, vertical: 25),
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
                 ),
                 child: const Text(
-                  "Confirm Booking",
+                  'Confirm Booking',
                   style: TextStyle(
-                      fontSize: 20, fontFamily: 'Bangers', color: Colors.white),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDateField(String label, DateTime? date, VoidCallback onTap) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFE2E5EE),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 18, color: Color(0xFF5E60F8)),
+                const SizedBox(width: 12),
+                Text(
+                  date == null
+                      ? 'Select date'
+                      : DateFormat('MMM dd, yyyy').format(date),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageUploadField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Upload Image (VALID ID)',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: _uploadImage,
+          child: Container(
+            width: double.infinity,
+            height: 160,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFE2E5EE),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: imageFile == null && imageBytes == null
+                ? const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        size: 48,
+                        color: Color(0xFF5E60F8),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Tap to upload image',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: kIsWeb
+                        ? Image.memory(imageBytes!, fit: BoxFit.cover)
+                        : Image.file(File(imageFile!.path), fit: BoxFit.cover),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPriceCard(double totalPrice) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E5EE), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Total Price',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '₱${totalPrice.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF5E60F8),
+            ),
+          ),
+        ],
       ),
     );
   }

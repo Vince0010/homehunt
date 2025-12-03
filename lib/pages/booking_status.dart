@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:homehunt/widget/support_widget.dart';
 import 'package:intl/intl.dart';
+import 'booking_confirmation_dialog.dart';
 
 class BookingStatusPage extends StatefulWidget {
   const BookingStatusPage({super.key});
@@ -50,20 +50,60 @@ class _BookingStatusPageState extends State<BookingStatusPage> {
     }
   }
 
+  Widget _buildBookingInfoRow(String label, String value, {bool isPrice = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.black54,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            color: isPrice ? const Color(0xFF5E60F8) : Colors.black87,
+            fontWeight: isPrice ? FontWeight.w700 : FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        title: const Center(
-          child: Text(
-            'Booking Status',
-            style: TextStyle(
-                fontSize: 18, fontFamily: 'Bangers', color: Colors.white),
+        title: const Text(
+          'Booking Status',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.black,
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF5E60F8),
+                Color(0xFF6D70FA),
+                Color(0xFFE9EBFF),
+              ],
+            ),
+          ),
+        ),
       ),
-      backgroundColor: const Color.fromARGB(255, 197, 185, 185),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: bookingStream,
         builder: (context, snapshot) {
@@ -88,58 +128,149 @@ class _BookingStatusPageState extends State<BookingStatusPage> {
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.all(16),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               DocumentSnapshot<Map<String, dynamic>> booking =
                   snapshot.data!.docs[index];
-              return Card(
-                margin: const EdgeInsets.all(10),
-                elevation: 4,
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E5EE), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(10.0),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ListTile(
-                        title: Text(
-                          "Booking ID: ${booking['BookingID']}",
-                          style: Appwidget.oswald(),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Booking #${booking['BookingID'].toString().substring(0, 8)}",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: booking['Status'] == 'Pending'
+                                  ? Colors.amber.shade50
+                                  : Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              booking['Status'],
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: booking['Status'] == 'Pending'
+                                    ? Colors.amber.shade700
+                                    : Colors.green.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildBookingInfoRow(
+                        'Check-in',
+                        DateFormat('MMM dd, yyyy').format(booking['CheckInDate'].toDate()),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildBookingInfoRow(
+                        'Check-out',
+                        DateFormat('MMM dd, yyyy').format(booking['CheckOutDate'].toDate()),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildBookingInfoRow(
+                        'Total Price',
+                        '₱${booking['TotalPrice'].toStringAsFixed(2)}',
+                        isPrice: true,
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => BookingConfirmationDialog(
+                                bookingId: booking['BookingID'],
+                                checkInDate: booking['CheckInDate'].toDate(),
+                                checkOutDate: booking['CheckOutDate'].toDate(),
+                                totalPrice: booking['TotalPrice'],
+                                roomTitle: booking['RoomTitle'] ?? 'Unknown Room',
+                                roomCategory: booking['RoomCategory'] ?? 'Unknown',
+                                lengthOfStay: booking['LengthOfStay'] ?? 0,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF5E60F8),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              Icon(Icons.qr_code_2, size: 18),
+                              SizedBox(width: 8),
                               Text(
-                                  "Check-in: ${DateFormat('yyyy-MM-dd').format(booking['CheckInDate'].toDate())}",
-                                  style: Appwidget.oswald()),
-                              Text(
-                                  "Check-out: ${DateFormat('yyyy-MM-dd').format(booking['CheckOutDate'].toDate())}",
-                                  style: Appwidget.oswald()),
-                              Text(
-                                  "Total Price: ₱${booking['TotalPrice'].toStringAsFixed(2)}",
-                                  style: Appwidget.oswald()),
-                              Text("Status: ${booking['Status']}",
-                                  style: Appwidget.oswald()),
+                                'View QR Code',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
-                      if (booking['Status'] == 'Pending')
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            ElevatedButton(
+                      if (booking['Status'] == 'Pending') ...
+                        [
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
                               onPressed: () {
                                 _cancelBooking(booking.id);
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
+                                backgroundColor: Colors.red.shade400,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                              child: Text("Cancel", style: Appwidget.bangers()),
+                              child: const Text(
+                                'Cancel Booking',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                     ],
                   ),
                 ),
