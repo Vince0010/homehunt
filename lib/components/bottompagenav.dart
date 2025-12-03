@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:homehunt/pages/home.dart';
-import 'package:homehunt/pages/booking.dart';
-import 'package:homehunt/pages/profile.dart';          // functional profile
-// (Create favorites_page.dart & notifications_page.dart if you want separate files)
+import 'package:homehunt/pages/bookings_list.dart';
+import 'package:homehunt/pages/profile.dart';
 
 class Bottompagenav extends StatefulWidget {
   const Bottompagenav({super.key});
@@ -16,7 +15,7 @@ class _BottompagenavState extends State<Bottompagenav> {
 
   final _pages = const [
     HomePage(),
-    BookingPage(price: ''),
+    BookingsListPage(),
     _FavoritesStub(),
     _NotificationsStub(),
     ProfilePage(),

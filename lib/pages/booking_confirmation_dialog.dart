@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:homehunt/pages/home.dart';
 import 'dart:convert';
 
 class BookingConfirmationDialog extends StatefulWidget {
@@ -12,6 +11,7 @@ class BookingConfirmationDialog extends StatefulWidget {
   final String roomTitle;
   final String roomCategory;
   final int lengthOfStay;
+  final bool showConfirmation;
 
   const BookingConfirmationDialog({
     super.key,
@@ -22,6 +22,7 @@ class BookingConfirmationDialog extends StatefulWidget {
     required this.roomTitle,
     required this.roomCategory,
     required this.lengthOfStay,
+    this.showConfirmation = true,
   });
 
   @override
@@ -114,11 +115,7 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog> {
               onPressed: () {
                 Navigator.pop(context);
                 Navigator.pop(context);
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const HomePage()),
-                  (route) => false,
-                );
+                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF5E60F8),
@@ -333,90 +330,110 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog> {
                     const SizedBox(height: 20),
 
                     // Confirmation Checkbox
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade200, width: 1),
-                      ),
-                      child: Row(
-                        children: [
-                          Checkbox(
-                            value: _hasReadWarning,
-                            onChanged: (value) {
-                              setState(() {
-                                _hasReadWarning = value ?? false;
-                              });
-                            },
-                            activeColor: const Color(0xFF5E60F8),
-                          ),
-                          Expanded(
-                            child: Text(
-                              'I have saved my booking details and understand the policy',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w500,
+                    if (widget.showConfirmation)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade200, width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: _hasReadWarning,
+                              onChanged: (value) {
+                                setState(() {
+                                  _hasReadWarning = value ?? false;
+                                });
+                              },
+                              activeColor: const Color(0xFF5E60F8),
+                            ),
+                            Expanded(
+                              child: Text(
+                                'I have saved my booking details and understand the policy',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                          color: Color(0xFF5E60F8),
-                          width: 1.5,
+              child: widget.showConfirmation
+                  ? Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                color: Color(0xFF5E60F8),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text(
+                              'Go Back',
+                              style: TextStyle(
+                                color: Color(0xFF5E60F8),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _hasReadWarning
+                                ? _showSaveConfirmationDialog
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF5E60F8),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.grey.shade300,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text(
+                              'Continue',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text(
-                        'Go Back',
-                        style: TextStyle(
-                          color: Color(0xFF5E60F8),
-                          fontWeight: FontWeight.w600,
+                      ],
+                    )
+                  : SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF5E60F8),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'Close',
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _hasReadWarning
-                          ? _showSaveConfirmationDialog
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5E60F8),
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text(
-                        'Continue',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
