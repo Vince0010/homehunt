@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:homehunt/pages/details.dart';
 import 'package:homehunt/pages/loginpage.dart';
+import 'package:homehunt/pages/profile.dart';
 import 'package:homehunt/services/database.dart';
 
 class HomePage extends StatefulWidget {
@@ -22,12 +23,14 @@ class _HomePageState extends State<HomePage> {
   String selectedCategory = "Standard";
   String? username;
   String? nameks;
+  String? userPhotoUrl;
 
   @override
   void initState() {
     super.initState();
     onLoad();
     fetchNAME();
+    fetchUserProfile();
   }
 
   @override
@@ -38,9 +41,18 @@ class _HomePageState extends State<HomePage> {
 
   void fetchNAME() {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null && user.email != null) {
-      username = user.email;
-      namek(username.toString());
+    if (user != null) {
+      // First, try to use the display name from Firebase Auth (works with Google login)
+      if (user.displayName != null && user.displayName!.isNotEmpty) {
+        setState(() {
+          nameks = user.displayName;
+          username = user.email;
+        });
+      } else if (user.email != null) {
+        // Fallback to checking Firestore for custom username
+        username = user.email;
+        namek(username.toString());
+      }
     } else {
       setState(() {
         username = 'Guest';
@@ -60,6 +72,33 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (e) {
       print("Error fetching username: $e");
+    }
+  }
+
+  void fetchUserProfile() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // First try to get photoURL from Firebase Auth
+      if (user.photoURL != null) {
+        setState(() {
+          userPhotoUrl = user.photoURL;
+        });
+      } else {
+        // Then try to get it from Firestore
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get()
+            .then((doc) {
+          if (doc.exists && mounted) {
+            setState(() {
+              userPhotoUrl = doc.get('photoUrl') ?? user.photoURL;
+            });
+          }
+        }).catchError((e) {
+          print("Error fetching user profile: $e");
+        });
+      }
     }
   }
 
@@ -205,6 +244,8 @@ class _HomePageState extends State<HomePage> {
               primary: _primary,
               searchCtrl: _searchCtrl,
               username: nameks ?? 'Guest',
+              photoUrl: userPhotoUrl,
+              context: context,
             ),
           ),
           
@@ -285,11 +326,15 @@ class _Header extends StatelessWidget {
   final Color primary;
   final TextEditingController searchCtrl;
   final String username;
+  final String? photoUrl;
+  final BuildContext context;
   
   const _Header({
     required this.primary,
     required this.searchCtrl,
     required this.username,
+    required this.context,
+    this.photoUrl,
   });
 
   @override
@@ -338,19 +383,33 @@ class _Header extends StatelessWidget {
                 ),
               ),
               // Avatar
-              ClipOval(
-                child: Container(
-                  color: Colors.white,
-                  width: 45,
-                  height: 45,
-                  child: Image.asset(
-                    "images/12.jpg",
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.person,
-                      color: Colors.grey,
-                      size: 30,
-                    ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (ctx) => const ProfilePage()),
+                  );
+                },
+                child: ClipOval(
+                  child: Container(
+                    color: Colors.white,
+                    width: 45,
+                    height: 45,
+                    child: photoUrl != null && photoUrl!.isNotEmpty
+                        ? Image.network(
+                            photoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.person,
+                              color: Colors.grey,
+                              size: 30,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.person,
+                            color: Colors.grey,
+                            size: 30,
+                          ),
                   ),
                 ),
               ),
@@ -433,7 +492,7 @@ class _FilterButton extends StatelessWidget {
   }
 }
 
-class _RoomCard extends StatelessWidget {
+class _RoomCard extends StatefulWidget {
   final String title;
   final String description;
   final String address;
@@ -457,6 +516,144 @@ class _RoomCard extends StatelessWidget {
   });
 
   @override
+  State<_RoomCard> createState() => _RoomCardState();
+}
+
+class _RoomCardState extends State<_RoomCard> {
+  bool _isFavorited = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfFavorited();
+  }
+
+  Future<void> _checkIfFavorited() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      final favoritesList = List<dynamic>.from(userDoc.data()?['favorites'] ?? []);
+      print("Room ${widget.roomId} - Checking favorites: $favoritesList");
+      
+      // Handle both string format (old) and object format (new)
+      final isFavorited = favoritesList.any((fav) => 
+        (fav is Map && fav['roomId'] == widget.roomId) ||
+        (fav is String && fav == widget.roomId)
+      );
+      
+      print("Is favorited: $isFavorited");
+      setState(() {
+        _isFavorited = isFavorited;
+      });
+    } catch (e) {
+      print("Error checking favorite for ${widget.roomId}: $e");
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      _showGuestWarning();
+      return;
+    }
+
+    print("Toggling favorite for room: ${widget.roomId} in category: ${widget.roomCategory}");
+
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userDoc = await userRef.get();
+      
+      // Store favorite as object with roomId and category
+      final favoriteObject = {
+        'roomId': widget.roomId,
+        'category': widget.roomCategory,
+      };
+      
+      // Create user document if it doesn't exist
+      if (!userDoc.exists) {
+        print("Creating new user doc with favorites: [${favoriteObject}]");
+        await userRef.set({
+          'uid': user.uid,
+          'email': user.email,
+          'displayName': user.displayName,
+          'photoUrl': user.photoURL,
+          'favorites': [favoriteObject],
+        });
+        setState(() {
+          _isFavorited = true;
+        });
+        print("User doc created with favorite");
+        return;
+      }
+
+      // Update existing document
+      final favoritesList = List<dynamic>.from(userDoc.data()?['favorites'] ?? []);
+      print("Current favorites: $favoritesList");
+      
+      // Check if already favorited
+      final isFavorited = favoritesList.any((fav) => 
+        (fav is Map && fav['roomId'] == widget.roomId) ||
+        (fav is String && fav == widget.roomId)
+      );
+      
+      if (isFavorited) {
+        // Remove from favorites
+        print("Removing favorite: ${widget.roomId}");
+        // Remove both old format (string) and new format (object)
+        await userRef.update({
+          'favorites': FieldValue.arrayRemove([widget.roomId])
+        });
+        // Also try to remove object format
+        await userRef.update({
+          'favorites': FieldValue.arrayRemove([favoriteObject])
+        }).catchError((_) {});
+      } else {
+        // Add to favorites
+        print("Adding favorite: ${widget.roomId} in category: ${widget.roomCategory}");
+        await userRef.update({
+          'favorites': FieldValue.arrayUnion([favoriteObject])
+        });
+      }
+
+      setState(() {
+        _isFavorited = !_isFavorited;
+      });
+      print("Favorite toggle completed");
+    } catch (e) {
+      print("Error updating favorite: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error updating favorite: $e")),
+      );
+    }
+  }
+
+  void _showGuestWarning() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Please log in to add favorites'),
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'LOGIN',
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => LoginPage(onTap: () {})),
+              (route) => false,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
@@ -464,15 +661,15 @@ class _RoomCard extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) => Details(
-              roomId: roomId,
-              roomCategory: roomCategory,
-              title: title,
-              description: description,
-              address: address,
-              price: price,
-              maxguests: maxGuests,
-              images: image,
-              status: status,
+              roomId: widget.roomId,
+              roomCategory: widget.roomCategory,
+              title: widget.title,
+              description: widget.description,
+              address: widget.address,
+              price: widget.price,
+              maxguests: widget.maxGuests,
+              images: widget.image,
+              status: widget.status,
             ),
           ),
         );
@@ -486,7 +683,7 @@ class _RoomCard extends StatelessWidget {
             BoxShadow(
               color: Colors.black.withOpacity(.06),
               blurRadius: 10,
-              offset: const Offset(0,4),
+              offset: const Offset(0, 4),
             )
           ],
         ),
@@ -498,7 +695,7 @@ class _RoomCard extends StatelessWidget {
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Image.network(
-                  image,
+                  widget.image,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     color: const Color(0xFFE5E7EB),
@@ -517,17 +714,17 @@ class _RoomCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: status.toLowerCase() == 'available'
+                          color: widget.status.toLowerCase() == 'available'
                               ? Colors.green.shade50
                               : Colors.red.shade50,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          status,
+                          widget.status,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: status.toLowerCase() == 'available'
+                            color: widget.status.toLowerCase() == 'available'
                                 ? Colors.green.shade700
                                 : Colors.red.shade700,
                           ),
@@ -535,9 +732,11 @@ class _RoomCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.favorite_border),
-                        color: Colors.black54,
+                        onPressed: _toggleFavorite,
+                        icon: Icon(
+                          _isFavorited ? Icons.favorite : Icons.favorite_border,
+                          color: _isFavorited ? Colors.red.shade400 : Colors.black54,
+                        ),
                         iconSize: 20,
                         splashRadius: 18,
                       ),
@@ -545,7 +744,7 @@ class _RoomCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    title,
+                    widget.title,
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
@@ -559,7 +758,7 @@ class _RoomCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          address,
+                          widget.address,
                           style: const TextStyle(fontSize: 12, color: Colors.black54),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -572,7 +771,7 @@ class _RoomCard extends StatelessWidget {
                       const Icon(Icons.people_outline, size: 14, color: Colors.black45),
                       const SizedBox(width: 4),
                       Text(
-                        'Max guests: $maxGuests',
+                        'Max guests: ${widget.maxGuests}',
                         style: const TextStyle(fontSize: 12, color: Colors.black54),
                       ),
                     ],
@@ -580,7 +779,7 @@ class _RoomCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   RichText(
                     text: TextSpan(
-                      text: '₱${price.toString()}',
+                      text: '₱${widget.price.toString()}',
                       style: const TextStyle(
                         color: Colors.black,
                         fontWeight: FontWeight.w700,

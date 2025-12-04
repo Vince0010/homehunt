@@ -29,10 +29,13 @@ class _PerformanceAnalyticsState extends State<PerformanceAnalytics> {
         DateTime(int.parse(_selectedYear), int.parse(_selectedMonth) + 1, 0).day;
 
     try {
+      // Get all bookings and filter client-side to handle both old and new MonthBooked formats
       final bookings = await FirebaseFirestore.instance
           .collection('Bookings')
-          .where('MonthBooked', isEqualTo: monthFilter)
           .get();
+
+      print('DEBUG: Total bookings fetched: ${bookings.docs.length}');
+      print('DEBUG: Looking for month: $monthFilter');
 
       double totalRevenue = 0;
       int totalUnits = 0;
@@ -61,15 +64,23 @@ class _PerformanceAnalyticsState extends State<PerformanceAnalytics> {
         final data = booking.data();
         final status = data['Status'] ?? 'Pending';
 
-        // Only count confirmed/completed bookings for revenue
-        if (status == 'Confirmed' || status == 'Completed') {
+        // Get MonthBooked or calculate from CheckInDate
+        String? bookingMonth = data['MonthBooked'];
+        if (bookingMonth == null && data['CheckInDate'] != null) {
+          final checkIn = (data['CheckInDate'] as Timestamp).toDate();
+          bookingMonth = '${checkIn.year}-${checkIn.month.toString().padLeft(2, '0')}';
+        }
+
+        print('DEBUG: Booking ${booking.id} - Status: $status, Month: $bookingMonth, MonthBooked field: ${data['MonthBooked']}, TotalPrice: ${data['TotalPrice']}');
+
+        // Only count confirmed/completed bookings for revenue and matching month
+        if (bookingMonth == monthFilter && (status == 'Confirmed' || status == 'Completed')) {
+          print('DEBUG: ✓ MATCHED - Counting booking ${booking.id}');
           totalRevenue += (data['TotalPrice'] ?? 0).toDouble();
           totalUnits++;
 
           final roomTitle = data['RoomTitle'] ?? 'Unknown';
-          final roomCategory = data['RoomCategory'] ?? 'Unknown';
           final lengthOfStay = data['LengthOfStay'] ?? 0;
-          final roomPrice = data['RoomPrice'] ?? 0;
 
           // Track by room
           roomRevenue[roomTitle] = (roomRevenue[roomTitle] ?? 0) + (data['TotalPrice'] ?? 0).toDouble();
@@ -81,8 +92,12 @@ class _PerformanceAnalyticsState extends State<PerformanceAnalytics> {
           stayLengths[roomTitle]!.add(lengthOfStay);
 
           totalBookingDays += (lengthOfStay as int);
+        } else {
+          print('DEBUG: ✗ NOT MATCHED - month: $bookingMonth != filter: $monthFilter OR status: $status not in [Confirmed, Completed]');
         }
       }
+
+      print('DEBUG: Final totals - Revenue: $totalRevenue, Units: $totalUnits, Days: $totalBookingDays');
 
       // Calculate average stay per room
       for (var room in stayLengths.entries) {

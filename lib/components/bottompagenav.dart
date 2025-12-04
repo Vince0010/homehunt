@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:homehunt/pages/home.dart';
 import 'package:homehunt/pages/bookings_list.dart';
+import 'package:homehunt/pages/favorites_page.dart';
+import 'package:homehunt/pages/alerts_page.dart';
 import 'package:homehunt/pages/profile.dart';
 
 class Bottompagenav extends StatefulWidget {
@@ -16,13 +20,15 @@ class _BottompagenavState extends State<Bottompagenav> {
   final _pages = const [
     HomePage(),
     BookingsListPage(),
-    _FavoritesStub(),
-    _NotificationsStub(),
+    FavoritesPage(),
+    AlertsPage(),
     ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
     return Scaffold(
       body: _pages[_index],
       bottomNavigationBar: NavigationBar(
@@ -48,11 +54,10 @@ class _BottompagenavState extends State<Bottompagenav> {
             label: 'Favorites',
           ),
           NavigationDestination(
-            icon: Icon(Icons.notifications_none, color: _index == 3 ? _primary : Colors.black54),
-            selectedIcon: Icon(Icons.notifications, color: _primary),
+            icon: _buildAlertsIcon(user?.uid),
             label: 'Alerts',
           ),
-            NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.person_outline, color: _index == 4 ? _primary : Colors.black54),
             selectedIcon: Icon(Icons.person, color: _primary),
             label: 'Profile',
@@ -61,17 +66,56 @@ class _BottompagenavState extends State<Bottompagenav> {
       ),
     );
   }
-}
 
-// Temporary stubs (replace with real pages later)
-class _FavoritesStub extends StatelessWidget {
-  const _FavoritesStub();
-  @override
-  Widget build(BuildContext context) => const Center(child: Text('Favorites'));
-}
+  Widget _buildAlertsIcon(String? userId) {
+    if (userId == null) {
+      return Icon(Icons.notifications_none, color: _index == 3 ? _primary : Colors.black54);
+    }
 
-class _NotificationsStub extends StatelessWidget {
-  const _NotificationsStub();
-  @override
-  Widget build(BuildContext context) => const Center(child: Text('Notifications'));
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('alerts')
+          .where('isRead', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data?.docs.length ?? 0;
+        
+        return Stack(
+          children: [
+            Icon(
+              _index == 3 ? Icons.notifications : Icons.notifications_none,
+              color: _index == 3 ? _primary : Colors.black54,
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    unreadCount > 9 ? '9+' : '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
 }

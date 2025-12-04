@@ -15,9 +15,9 @@ class _AnalyticsSummaryState extends State<AnalyticsSummary> {
         '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     try {
+      // Get all bookings and filter client-side to handle both old and new MonthBooked formats
       final bookings = await FirebaseFirestore.instance
           .collection('Bookings')
-          .where('MonthBooked', isEqualTo: monthFilter)
           .get();
 
       double totalRevenue = 0;
@@ -27,7 +27,15 @@ class _AnalyticsSummaryState extends State<AnalyticsSummary> {
         final data = booking.data();
         final status = data['Status'] ?? 'Pending';
 
-        if (status == 'Confirmed' || status == 'Completed') {
+        // Get MonthBooked or calculate from CheckInDate
+        String? bookingMonth = data['MonthBooked'];
+        if (bookingMonth == null && data['CheckInDate'] != null) {
+          final checkIn = (data['CheckInDate'] as Timestamp).toDate();
+          bookingMonth = '${checkIn.year}-${checkIn.month.toString().padLeft(2, '0')}';
+        }
+
+        // Only count if matches current month and status is confirmed/completed
+        if (bookingMonth == monthFilter && (status == 'Confirmed' || status == 'Completed')) {
           totalRevenue += (data['TotalPrice'] ?? 0).toDouble();
           totalUnits++;
         }

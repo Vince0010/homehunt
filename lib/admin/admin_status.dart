@@ -27,26 +27,91 @@ class _AdminBookingStatusState extends State<AdminBookingStatus> {
   // Update or delete booking based on the status
   Future<void> updateBookingStatus(String bookingId, String newStatus) async {
     try {
+      // Get booking details before updating
+      final bookingDoc = await FirebaseFirestore.instance
+          .collection('Bookings')
+          .doc(bookingId)
+          .get();
+      final bookingData = bookingDoc.data();
+      final userId = bookingData?['UserID'];
+      final roomTitle = bookingData?['RoomTitle'] ?? 'Room';
+
       if (newStatus == 'Rejected') {
         // Delete booking if rejected
         await FirebaseFirestore.instance
             .collection('Bookings')
             .doc(bookingId)
             .delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Booking has been rejected and removed.")));
+        
+        // Create alert for user
+        if (userId != null) {
+          await _createAlert(
+            userId,
+            'Booking Rejected',
+            'Your booking for $roomTitle has been rejected.',
+            'rejected',
+          );
+        }
+        
+        // Only show SnackBar if widget is still mounted
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("Booking has been rejected and removed.")));
+        }
       } else {
-        // Update status for other cases (Pending, Confirmed, Completed)
+        // Update status for other cases
         await FirebaseFirestore.instance
             .collection('Bookings')
             .doc(bookingId)
             .update({'Status': newStatus});
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Booking status updated to $newStatus")));
+        
+        // Create alert for user
+        if (userId != null) {
+          await _createAlert(
+            userId,
+            'Booking Status Updated',
+            'Your booking for $roomTitle is now $newStatus.',
+            newStatus.toLowerCase(),
+          );
+        }
+        
+        // Only show SnackBar if widget is still mounted
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Booking status updated to $newStatus")));
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Failed to update status: $e")));
+      // Only show SnackBar if widget is still mounted
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Failed to update status: $e")));
+      }
+    }
+  }
+
+  Future<void> _createAlert(
+    String userId,
+    String title,
+    String message,
+    String statusType,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('alerts')
+          .add({
+        'type': 'automated',
+        'title': title,
+        'message': message,
+        'status': statusType,
+        'timestamp': Timestamp.now(),
+        'isRead': false,
+      });
+      print("Alert created for user $userId");
+    } catch (e) {
+      print("Error creating alert: $e");
     }
   }
 
