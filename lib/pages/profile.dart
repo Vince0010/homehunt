@@ -72,22 +72,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       },
                     ),
                     _tile(
-                      icon: Icons.payment,
-                      text: 'Payment Method',
-                      onTap: () {},
-                    ),
-                    _tile(
-                      icon: Icons.calendar_month,
-                      text: 'My Bookings',
-                      onTap: () {},
-                    ),
-                    _darkModeTile(),
-                    _tile(
-                      icon: Icons.privacy_tip,
-                      text: 'Privacy Policy',
-                      onTap: () => _showTextDialog(context, 'Privacy Policy', 'Your privacy policy text.'),
-                    ),
-                    _tile(
                       icon: Icons.description,
                       text: 'Terms & Conditions',
                       onTap: () => Navigator.push(
